@@ -1,0 +1,18 @@
+macro PUSHACC
+    STA ~_sp
+    LDA &_sp
+    ADD #1
+    STA &_sp
+end
+
+macro PUSH
+    LDA $
+    PUSHACC
+end
+
+macro POP
+    LDA &_sp
+    SUB #1
+    STA &_sp
+    LDA ~_sp
+end
