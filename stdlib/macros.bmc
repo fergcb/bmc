@@ -16,3 +16,11 @@ macro POP
     STA &_sp
     LDA ~_sp
 end
+
+macro PEEK
+    LDA &_sp
+    SUB #1
+    SUB $
+    STA &_a
+    LDA ~_a
+end
