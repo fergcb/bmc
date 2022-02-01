@@ -12,8 +12,8 @@ def interpret(tokens):
                     b = stack.pop()
                     stack.append(a + b)
                 case ("-",):
-                    a = stack.pop()
                     b = stack.pop()
+                    a = stack.pop()
                     stack.append(a - b)
                 case ("*",):
                     a = stack.pop()
