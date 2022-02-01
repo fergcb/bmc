@@ -18,7 +18,7 @@ def main():
     mode = args.mode
     if mode not in ["compile", "compare"] and args.output is not None:
         ap.error("--output cannot be specified when there is no code to output.")
-    if mode == "compile" and args.dump:
+    if mode == "compile" and not args.exec and args.dump:
         ap.error("Cannot dump memory when no code is being executed.")
     if args.exec and mode != "compile":
         ap.error("--exec cannot be used outside of 'compile' mode.")
