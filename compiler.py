@@ -65,6 +65,7 @@ def compile(tokens):
     return "\n".join([
         stdlib["macros"],
         *asm,
+        "HLT",
         stdlib["functions"],
         stdlib["data"]
     ])
