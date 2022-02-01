@@ -162,7 +162,7 @@ def insert_macros(lines, macros):
         for j, line in enumerate(macro):
             lines.insert(i + j, line.replace("$", address))
         if label is not None:
-            line[i] = label + "\t" + line[i]
+            lines[i] = label + "\t" + lines[i]
         i += len(macro)
     return lines
 
