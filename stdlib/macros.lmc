@@ -1,3 +1,5 @@
+-- MACROS
+
 macro PUSHACC
     STA ~_sp
     LDA &_sp
@@ -21,6 +23,6 @@ macro PEEK
     LDA &_sp
     SUB #1
     SUB $
-    STA &_a
-    LDA ~_a
+    STA &_d
+    LDA ~_d
 end

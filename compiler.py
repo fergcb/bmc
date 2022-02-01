@@ -11,7 +11,7 @@ def load_stdlib():
     for path in filepaths:
         _, tail = split_path(path)
         name, ext = splitext(tail)
-        if ext != ".bmc":
+        if ext != ".lmc":
             continue
         with open(join_path(dir, path), "r") as file:
             stdlib[name] = file.read()
@@ -46,5 +46,6 @@ def compile(tokens):
     return "\n".join([
         stdlib["macros"],
         *asm,
+        stdlib["functions"],
         stdlib["data"]
     ])
