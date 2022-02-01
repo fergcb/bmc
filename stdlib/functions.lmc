@@ -3,14 +3,14 @@
 std_mul     LDA #0
             STA &_a
             PEEK #1
-std_mul_lp  BRZ mul_rt
+std_mul_lp  BRZ std_mul_rt
             SUB #1
             STA &_b
             PEEK #2
             ADD &_a
             STA &_a
             LDA &_b
-            BRA mul_lp
+            BRA std_mul_lp
 std_mul_rt  POP
             STA &_d
             POP
