@@ -10,7 +10,7 @@ def parse_num(source):
 
 
 def parse_op(source):
-    if source[0] in "+-.":
+    if source[0] in "+-*.":
         match = source[0]
         rest = source[1:]
         return ({ "type": "op", "value": (match,) }, rest)

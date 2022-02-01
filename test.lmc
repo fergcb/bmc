@@ -1,3 +1,5 @@
+-- MACROS
+
 macro PUSHACC
     STA ~_sp
     LDA &_sp
@@ -16,15 +18,45 @@ macro POP
     STA &_sp
     LDA ~_sp
 end
-PUSH #34
-PUSH #35
-POP
-STA &_a
-POP
-ADD &_a
-PUSHACC
+
+macro PEEK
+    LDA &_sp
+    SUB #1
+    SUB $
+    STA &_d
+    LDA ~_d
+end
+PUSH #3
+PUSH #5
+PUSH #ret001
+BRA std_mul
+ret001 PUSHACC
 POP
 OUT
+-- FUNCTIONS
+
+std_mul     LDA #0
+            STA &_a
+            PEEK #1
+std_mul_lp  BRZ std_mul_rt
+            SUB #1
+            STA &_b
+            PEEK #2
+            ADD &_a
+            STA &_a
+            LDA &_b
+            BRA std_mul_lp
+std_mul_rt  POP
+            STA &_d
+            POP
+            POP
+            LDA &_a
+            BRA &_d
+-- DATA
+
 _a      DAT
+_b      DAT
+_c      DAT
+_d      DAT
 _sp     DAT _stk
 _stk    DAT
