@@ -19,6 +19,10 @@ def interpret(tokens):
                     a = stack.pop()
                     b = stack.pop()
                     stack.append(a * b)
+                case ("/",):
+                    b = stack.pop()
+                    a = stack.pop()
+                    stack.append(a // b)
                 case (".",):
                     print(stack.pop())
         ip += 1

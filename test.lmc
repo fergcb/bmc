@@ -26,13 +26,14 @@ macro PEEK
     STA &_d
     LDA ~_d
 end
-PUSH #3
-PUSH #5
-PUSH #ret001
-BRA std_mul
-ret001 PUSHACC
-POP
-OUT
+
+        PUSH #15
+        PUSH #3
+        PUSH #ret001
+        BRA std_div
+ret001  OUT
+        HLT
+
 -- FUNCTIONS
 
 std_mul     LDA #0
@@ -52,6 +53,30 @@ std_mul_rt  POP
             POP
             LDA &_a
             BRA &_d
+
+std_div     LDA #0
+            STA &_a
+            PEEK #1
+            STA &_c
+            PEEK #2
+std_div_lp  SUB &_c
+            STA &_b
+            BRP std_div_in
+            BRZ std_div_in
+            BRA std_div_rt
+std_div_in  LDA &_a
+            ADD #1
+            STA &_a
+            LDA &_b
+            BRZ std_div_rt
+            BRA std_div_lp
+std_div_rt  POP
+            STA &_d
+            POP
+            POP
+            LDA &_a
+            BRA &_d
+
 -- DATA
 
 _a      DAT
