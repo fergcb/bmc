@@ -21,7 +21,7 @@ def Op(source):
     if source[0] in "+-*/%.":
         match = source[0]
         rest = source[1:]
-        return ({ "type": "op", "value": (match,) }, rest)
+        return ({ "type": "op", "value": match }, rest)
     return (None, source)
 
 

@@ -18,56 +18,87 @@ def load_stdlib():
 
     return stdlib
 
-def compile(tokens):
+
+_ret_n = 0
+def next_ret():
+    global _ret_n
+    _ret_n += 1
+    return "ret" + str(_ret_n).zfill(3)
+
+
+def translate(token):
+    if token["type"] == "nop":
+        return []
+
+    if token["type"] == "num":
+        return [
+            "PUSH #{}".format(token["value"] % 255)
+        ]
+
+    if token["type"] == "op":
+        op = token["value"]
+        # ADD
+        if op == "+":
+            return [
+                "POP"
+                "STA &_a",
+                "POP",
+                "ADD &_a",
+                "PUSHACC",
+            ]
+        # SUBTRACT
+        if op == "-":
+            return [
+                "POP",
+                "STA &_a",
+                "POP",
+                "SUB &_a",
+                "PUSHACC",
+            ]
+        # MULTIPLY
+        if op == "*":
+            ret = next_ret()
+            return [
+                f"PUSH #{ret}",
+                "BRA std_mul",
+                f"{ret} PUSHACC",
+            ]
+        # DIVIDE
+        if op == "/":
+            ret = next_ret()
+            return [
+                f"PUSH #{ret}",
+                "BRA std_div",
+                f"{ret} PUSHACC",
+            ]
+        # MODULO
+        if op == "%":
+            ret = next_ret()
+            return [
+                f"PUSH #{ret}",
+                "BRA std_div",
+                f"{ret} LDA &_b",
+                "PUSHACC",
+            ]
+        # PRINT
+        if op == ".":
+            return [
+                "POP",
+                "OUT",
+            ]
+
+
+def translate_sequence(tokens):
     asm = []
-
-    def get_ci():
-        return len(asm)
-
-    _ret_n = 0
-    def next_ret():
-        nonlocal _ret_n
-        _ret_n += 1
-        return "ret" + str(_ret_n).zfill(3)
-
     for token in tokens:
-        if token["type"] == "num":
-            asm.append("PUSH #{}".format(token["value"] % 255))
-        elif token["type"] == "op":
-            match token["value"]:
-                case ("+",):
-                    asm.append("POP")
-                    asm.append("STA &_a")
-                    asm.append("POP")
-                    asm.append("ADD &_a")
-                    asm.append("PUSHACC")
-                case ("-",):
-                    asm.append("POP")
-                    asm.append("STA &_a")
-                    asm.append("POP")
-                    asm.append("SUB &_a")
-                    asm.append("PUSHACC")
-                case ("*",):
-                    ret = next_ret()
-                    asm.append(f"PUSH #{ret}")
-                    asm.append("BRA std_mul")
-                    asm.append(f"{ret} PUSHACC")
-                case ("/",):
-                    ret = next_ret()
-                    asm.append(f"PUSH #{ret}")
-                    asm.append("BRA std_div")
-                    asm.append(f"{ret} PUSHACC")
-                case ("%",):
-                    ret = next_ret()
-                    asm.append(f"PUSH #{ret}")
-                    asm.append("BRA std_div")
-                    asm.append(f"{ret} LDA &_b")
-                    asm.append("PUSHACC")
-                case (".",):
-                    asm.append("POP")
-                    asm.append("OUT")
+        asm += translate(token)
+    return asm
 
-    stdlib = load_stdlib() 
+
+def compile(tokens):
+    asm = translate_sequence(tokens)
+
+    stdlib = load_stdlib()
     return "\n".join([
         stdlib["macros"],
         *asm,
