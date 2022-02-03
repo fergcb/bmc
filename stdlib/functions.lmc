@@ -27,6 +27,8 @@ std_div_lp  SUB &_c
             STA &_b
             BRP std_div_in
             BRZ std_div_in
+            ADD &_c
+            STA &_b
             BRA std_div_rt
 std_div_in  LDA &_a
             ADD #1
