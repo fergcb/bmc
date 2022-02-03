@@ -264,7 +264,7 @@ def assemble(code):
 
 def read(memory, address, mode):
     if mode == address_modes["IMMEDIATE"]:
-        return address
+        return np.int16(address)
     if mode == address_modes["DIRECT"]:
         return memory[address]
     if mode == address_modes["INDIRECT"]:
@@ -291,7 +291,7 @@ def execute(memory):
 
     while pc < len(memory):
         ci = pc
-        op = memory[ci]
+        op = np.uint16(memory[ci])
         opcode = int(op >> 10)
         mode = (op >> 8) & 0b11
         address = np.uint8(op & 0b11111111)
@@ -345,7 +345,7 @@ def emulate(source, memsize=None):
 
     if memsize is None:
         memsize = len(object) + 32
-    memory = [np.uint16(0)] * memsize
+    memory = [np.int16(0)] * memsize
     memory[:len(object)] = object
 
     execute(memory)
