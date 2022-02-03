@@ -351,17 +351,3 @@ def emulate(source, memsize=None):
     execute(memory)
 
     return memory
-
-
-MEM_SIZE = 100
-
-def main():
-    code = ""
-    object = assemble(code)
-    memory = [np.uint16(0)] * MEM_SIZE
-    memory[:len(object)] = object[:]
-    execute(memory)
-   
-
-if __name__ == "__main__":    
-    main()
