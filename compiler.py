@@ -57,6 +57,12 @@ def compile(tokens):
                     asm.append(f"PUSH #{ret}")
                     asm.append("BRA std_div")
                     asm.append(f"{ret} PUSHACC")
+                case ("%",):
+                    ret = next_ret()
+                    asm.append(f"PUSH #{ret}")
+                    asm.append("BRA std_div")
+                    asm.append(f"{ret} LDA &_b")
+                    asm.append("PUSHACC")
                 case (".",):
                     asm.append("POP")
                     asm.append("OUT")
