@@ -77,6 +77,8 @@ python bmc.py compare -f test.bmc
 | 0...999 | Integer Literal | Push the given integer to the stack. |
 | + | Add | Pop two values and push their sum. |
 | - | Sub | Pop two values and push their difference. |
+| * | Sub | Pop two values and push their product. |
+| % | Sub | Pop two values and push their quotient. |
 | . | Output | Pop one value and print it to the screen. |
 
 ## Background
