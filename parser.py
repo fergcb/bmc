@@ -1,53 +1,112 @@
 import re
 
-def WS(source):
-    re_match = re.match(r"^[ \t]+", source)
-    if re_match is not None:
-        match = re_match.group(0)
-        rest = source[len(match):]
-        return ({ "type": "nop", "value": "_" }, rest)
-    return (None, source)
-
-def Num(source):
-    re_match = re.match(r"^(0|([1-9][0-9]{,2}))", source)
-    if re_match is not None:
-        match = re_match.group(0)
-        rest = source[len(match):]
-        return ({ "type": "num", "value": int(match) }, rest)
-    return (None, source)
+class Matcher():
+    def __call__(self, source):
+        return None
+    
+    def __rshift__(self, action):
+        return Process(self, action)
+    
+    def __and__(self, other):
+        return Sequence(self, other)
+    
+    def __or__(self, other):
+        return Alternate(self, other)
 
 
-def Op(source):
-    if source[0] in "+-*/%.":
-        match = source[0]
-        rest = source[1:]
-        return ({ "type": "op", "value": match }, rest)
-    return (None, source)
+class Sequence(Matcher):
+    def __init__(self, *matchers):
+        self.matchers = matchers
 
+    def __add__(self, matcher):
+        return Sequence(*self.matchers, matcher)
 
-def Sequence(*matchers):
-    def match_sequence(source):
+    def __call__(self, source):
         matches = []
         rest = source
-        for matcher in matchers:
+        for matcher in self.matchers:
             match, rest = matcher(rest)
             if match is None:
                 return (None, source)
             matches.append(match)
         return (matches, rest)
-    return match_sequence
-        
 
-def Option(*matchers):
-    def match_option(source):
-        for matcher in matchers:
+
+class Alternate(Matcher):
+    def __init__(self, *matchers):
+        self.matchers = matchers
+    
+    def __or__(self, matcher):
+        return Alternate(*self.matchers, matcher)
+
+    def __call__(self, source):
+        for matcher in self.matchers:
             match, rest = matcher(source)
-            if match is None:
-                continue
+            if match is not None:
+                return (match, rest)
+        return (None, source)
+
+
+class Symbol(Matcher):
+    def __init__(self, value):
+        self.value = value
+
+    def __call__(self, source):
+        if source.startswith(self.value):
+            match = self.value
+            rest = source[len(match):]
             return (match, rest)
         return (None, source)
-    return match_option
-        
+
+
+class RegExp(Matcher):
+    def __init__(self, expr):
+        self.expr = expr
+    
+    def __call__(self, source):
+        re_match = re.match(self.expr, source)
+        if re_match is not None:
+            match = re_match.group(0)
+            rest = source[len(match):]
+            return (match, rest)
+        return (None, source)
+
+
+class Process(Matcher):
+    def __init__(self, matcher, action):
+        self.matcher = matcher
+        self.action = action
+    
+    def __call__(self, source):
+        match, rest = self.matcher(source)
+        if match is None:
+            return (None, source)
+        return (self.action(match), rest)
+
+
+class Action():
+    def __call__(self, match):
+        return None
+
+
+class SimpleAction(Action):
+    def __init__(self, transformer):
+        self.transformer = transformer
+    
+    def __call__(self, match):
+        return self.transformer(match)
+
+
+class Entoken(Action):
+    def __init__(self, type):
+        self.type = type
+    
+    def __call__(self, value):
+        return {
+            "type": self.type,
+            "value": value
+        }
+
 
 def ZeroOrMore(matcher):
     def match_zero_or_more(source):
@@ -61,12 +120,14 @@ def ZeroOrMore(matcher):
         return (matches, rest)
     return match_zero_or_more
 
+WS = RegExp(r"^[ \t]+") >> Entoken("nop")
+Num = RegExp(r"^(0|([1-9][0-9]{,2}))") >> SimpleAction(int) >> Entoken("num")
 
-parser = ZeroOrMore(Option(WS, Op, Num))
+Op = lambda op: Symbol(op) >> Entoken("op")
+Operator = Op("+") | Op("-") | Op("*") | Op("/") | Op("%") | Op(".")
 
 
-def strip_whitespace(source):
-    return re.sub(r"[ \t\r\n]", "", source)
+parser = ZeroOrMore(WS | Operator | Num)
 
 
 def tokenize(source):
