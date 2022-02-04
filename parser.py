@@ -14,7 +14,7 @@ class Matcher():
     def __rshift__(self, action):
         return Process(self, action)
     
-    def __and__(self, other):
+    def __add__(self, other):
         return Sequence(self, other)
     
     def __or__(self, other):
@@ -33,8 +33,9 @@ class Optional(Matcher):
 
 
 class Sequence(Matcher):
-    def __init__(self, *matchers):
+    def __init__(self, *matchers, ignore_whitespace=False):
         self.matchers = matchers
+        self.ignore_whitepace = ignore_whitespace
 
     def __add__(self, matcher):
         return Sequence(*self.matchers, matcher)
@@ -43,10 +44,14 @@ class Sequence(Matcher):
         matches = []
         rest = source
         for matcher in self.matchers:
+            if self.ignore_whitepace:
+                rest = rest.lstrip()
             match, rest = matcher(rest)
             if match is Fail:
                 return (Fail, source)
             matches.append(match.value)
+        if self.ignore_whitepace:
+            rest = rest.lstrip()
         return (Result(matches), rest)
 
 
@@ -66,17 +71,22 @@ class Alternate(Matcher):
 
 
 class Repeat(Matcher):
-    def __init__(self, matcher):
+    def __init__(self, matcher, ignore_whitespace=False):
         self.matcher = matcher
+        self.ignore_whitespace = ignore_whitespace
     
     def __call__(self, source):
         matches = []
         rest = source
         while len(rest) > 0:
+            if self.ignore_whitespace:
+                rest = rest.lstrip()
             match, rest = self.matcher(rest)
             if match is Fail:
                 break
             matches.append(match.value)
+        if self.ignore_whitespace:
+            rest = rest.lstrip()
         if len(matches) > 0:
             return (Result(matches), rest)
         return (Fail, source)
@@ -105,6 +115,17 @@ class RegExp(Matcher):
             rest = source[len(match):]
             return (Result(match), rest)
         return (Fail, source)
+
+
+class Lazy(Matcher):
+    def __init__(self, matcher_func):
+        self.matcher_func = matcher_func
+        self.matcher = None
+    
+    def __call__(self, source):
+        if self.matcher is None:
+            self.matcher = self.matcher_func()
+        return self.matcher(source)
 
 
 class Process(Matcher):
@@ -144,15 +165,44 @@ class Entoken(Action):
             "value": value
         }
 
+class Select(Action):
+    def __init__(self, *indices):
+        self.indices = indices
+    
+    def __call__(self, values):
+        if len(self.indices) == 1:
+            return values[self.indices[0]]
+        return [v for i, v in enumerate(values) if i in self.indices]
 
-WS = RegExp(r"^[ \t]+") >> Entoken("nop")
-Num = RegExp(r"^(0|([1-9][0-9]{,2}))") >> SimpleAction(int) >> Entoken("num")
 
-Op = lambda op: Symbol(op) >> Entoken("op")
-Operator = Op("+") | Op("-") | Op("*") | Op("/") | Op("%") | Op(".")
+def Num():
+    return RegExp(r"^(0|([1-9][0-9]{,2}))") >> SimpleAction(int) >> Entoken("num")
+
+def Literal():
+    return Num()
 
 
-parser = Repeat(WS | Operator | Num)
+Op =  lambda op: Symbol(op) >> Entoken("op")
+def Operator():
+    return Op("+") | Op("-") | Op("*") | Op("/") | Op("%") | Op(".")
+
+
+def IfStmt():
+    return Sequence(Symbol("?"), Block(), ignore_whitespace=True) >> Select(1) >> Entoken("if")
+
+def IfElseStmt():
+    return Sequence(Symbol("?"), Block(), Symbol(":"), Block(), ignore_whitespace=True) >> Select(1, 3) >> Entoken("if-else")
+
+def Statement():
+    return Lazy(IfElseStmt) | Lazy(IfStmt)
+
+def Segment():
+    return Repeat(Statement() | Operator() | Literal(), ignore_whitespace=True)
+
+def Block():
+    return (Symbol("(") + Segment() + Symbol(")")) >> Select(1)
+
+parser = Segment()
 
 
 def tokenize(source):

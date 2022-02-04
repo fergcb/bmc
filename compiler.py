@@ -27,16 +27,43 @@ def next_ret():
 
 
 def translate(token):
-    if token["type"] == "nop":
+    type, value = token.values()
+    
+    if type == "nop":
         return []
 
-    if token["type"] == "num":
+    if type == "num":
         return [
-            "PUSH #{}".format(token["value"] % 255)
+            "PUSH #{}".format(value % 255)
         ]
 
-    if token["type"] == "op":
-        op = token["value"]
+    if type == "if":
+        block = translate_sequence(value)
+        end = next_ret()
+        return [
+            "POP",
+            f"BRZ {end}",
+            *block,
+            f"{end} NOP"
+        ]
+
+    if type == "if-else":
+        if_block = translate_sequence(value[0])
+        else_block = translate_sequence(value[1])
+        elze = next_ret()
+        end = next_ret()
+        return [
+            "POP",
+            f"BRZ {elze}",
+            *if_block,
+            f"BRA {end}",
+            f"{elze} NOP",
+            *else_block,
+            f"{end} NOP"
+        ]
+
+    if type == "op":
+        op = value
         # ADD
         if op == "+":
             return [
@@ -86,6 +113,9 @@ def translate(token):
                 "POP",
                 "OUT",
             ]
+    
+
+    raise Exception(f"Unknown token type '{type}'.")
 
 
 def translate_sequence(tokens):
