@@ -1,5 +1,12 @@
 import re
 
+class Result():
+    def __init__(self, value):
+        self.value = value
+
+Empty = Result(None)
+Fail = Result(None)
+
 class Matcher():
     def __call__(self, source):
         return None
@@ -14,6 +21,17 @@ class Matcher():
         return Alternate(self, other)
 
 
+class Optional(Matcher):
+    def __init__(self, matcher):
+        self.matcher = matcher
+    
+    def __call__(self, source):
+        match, rest = self.matcher(source)
+        if match is not Fail:
+            return (Result(match.value), rest)
+        return (Empty, source)
+
+
 class Sequence(Matcher):
     def __init__(self, *matchers):
         self.matchers = matchers
@@ -26,10 +44,10 @@ class Sequence(Matcher):
         rest = source
         for matcher in self.matchers:
             match, rest = matcher(rest)
-            if match is None:
-                return (None, source)
-            matches.append(match)
-        return (matches, rest)
+            if match is Fail:
+                return (Fail, source)
+            matches.append(match.value)
+        return (Result(matches), rest)
 
 
 class Alternate(Matcher):
@@ -42,9 +60,26 @@ class Alternate(Matcher):
     def __call__(self, source):
         for matcher in self.matchers:
             match, rest = matcher(source)
-            if match is not None:
-                return (match, rest)
-        return (None, source)
+            if match is not Fail:
+                return (Result(match.value), rest)
+        return (Fail, source)
+
+
+class Repeat(Matcher):
+    def __init__(self, matcher):
+        self.matcher = matcher
+    
+    def __call__(self, source):
+        matches = []
+        rest = source
+        while len(rest) > 0:
+            match, rest = self.matcher(rest)
+            if match is Fail:
+                break
+            matches.append(match.value)
+        if len(matches) > 0:
+            return (Result(matches), rest)
+        return (Fail, source)
 
 
 class Symbol(Matcher):
@@ -55,8 +90,8 @@ class Symbol(Matcher):
         if source.startswith(self.value):
             match = self.value
             rest = source[len(match):]
-            return (match, rest)
-        return (None, source)
+            return (Result(match), rest)
+        return (Fail, source)
 
 
 class RegExp(Matcher):
@@ -68,8 +103,8 @@ class RegExp(Matcher):
         if re_match is not None:
             match = re_match.group(0)
             rest = source[len(match):]
-            return (match, rest)
-        return (None, source)
+            return (Result(match), rest)
+        return (Fail, source)
 
 
 class Process(Matcher):
@@ -79,9 +114,11 @@ class Process(Matcher):
     
     def __call__(self, source):
         match, rest = self.matcher(source)
-        if match is None:
-            return (None, source)
-        return (self.action(match), rest)
+        if match is Fail:
+            return (Fail, source)
+        processed = self.action(match.value)
+        
+        return (Result(processed), rest)
 
 
 class Action():
@@ -108,18 +145,6 @@ class Entoken(Action):
         }
 
 
-def ZeroOrMore(matcher):
-    def match_zero_or_more(source):
-        matches = []
-        match, rest = {}, source
-        while len(rest) > 0:
-            match, rest = matcher(rest)
-            if match is None:
-                return (None, rest)
-            matches.append(match)
-        return (matches, rest)
-    return match_zero_or_more
-
 WS = RegExp(r"^[ \t]+") >> Entoken("nop")
 Num = RegExp(r"^(0|([1-9][0-9]{,2}))") >> SimpleAction(int) >> Entoken("num")
 
@@ -127,18 +152,20 @@ Op = lambda op: Symbol(op) >> Entoken("op")
 Operator = Op("+") | Op("-") | Op("*") | Op("/") | Op("%") | Op(".")
 
 
-parser = ZeroOrMore(WS | Operator | Num)
+parser = Repeat(WS | Operator | Num)
 
 
 def tokenize(source):
-    tokens, rest = parser(source)
+    match, rest = parser(source)
 
-    if tokens is None:
+    if match is Fail:
         col = len(source) - len(rest)
         raise Exception(f"No match found at col {col}.")
 
     if rest != "":
         col = len(source) - len(rest)
         raise Exception(f"Expected end of string, found '{rest[:1]}' at col {col}.")
+
+    tokens = match.value
 
     return tokens
