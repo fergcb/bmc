@@ -67,7 +67,7 @@ def translate(token):
         # ADD
         if op == "+":
             return [
-                "POP"
+                "POP",
                 "STA &_a",
                 "POP",
                 "ADD &_a",
