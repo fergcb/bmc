@@ -1,3 +1,7 @@
-16 2 %
-  ? ( 0. )
-  : ( 1. )
+fn (n) {
+  n ? { n 1 - count! void }
+  n .
+  0
+} is count
+
+4 count!

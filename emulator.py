@@ -1,10 +1,11 @@
 import re
 import numpy as np
+import time
 
 ws_expr = re.compile(r"[ \t]+")
 label_expr = re.compile(r"[a-zA-Z_][a-zA-Z0-9]*")
 
-# OOOOPPMM AAAAAAAA
+# OOOOPPMM AAAAAAAA AAAAAAAA AAAAAAAA
 # O = opcode / instruction
 # P = opcode - mode/misc
 # M = addressing mode
@@ -246,18 +247,20 @@ def resolve_addresses(operations, labels):
 
 
 def flatten(operations):
-    return list(map(lambda op: np.uint16((((op[0] << 2) | op[1]) << 8) | op[2]), operations))
+    return list(map(lambda op: np.uint32((((op[0] << 2) | op[1]) << 24) | op[2]), operations))
 
 
 def assemble(code):
     lines = filter_empty(code.split("\n"))
     lines = strip_comments(lines)
+    lines = filter_empty(lines)
     macros, lines = parse_macros(lines)
     macros = expand_macros(macros)
     lines = insert_macros(lines, macros)
     # print("\n".join(map(lambda l: f"{l[0]}\t{l[1]}", enumerate(lines))))
     labels, operations = parse_ops(lines)
     operations = resolve_addresses(operations, labels)
+    # print("\n".join(f"{i} {z[0]} =>\t\t{str(z[1])}" for i, z in enumerate(zip(lines, operations))))
     instructions = flatten(operations)
     return instructions
 
@@ -285,16 +288,16 @@ def write(memory, address, mode, value):
         raise Exception(f"Invalid address mode {mode}.")
 
 
-def execute(memory):
+def execute(memory, stack_base):
     pc = 0
     acc = 0
 
     while pc < len(memory):
         ci = pc
-        op = np.uint16(memory[ci])
-        opcode = int(op >> 10)
-        mode = (op >> 8) & 0b11
-        address = np.uint8(op & 0b11111111)
+        op = np.uint32(memory[ci])
+        opcode = int(op >> 26)
+        mode = (op >> 24) & 0b11
+        address = np.uint32(op & 0xff_ff_ff)
         # print("{}: {:06b}_{:02b} {:08b}".format(pc, opcode, mode, address))
         if opcode == opcodes["HLT"]:
             break
@@ -337,17 +340,18 @@ def execute(memory):
         else:
             raise Exception("Invalid instruction {0:06b}_{1:02b} {2:08b}. Unrecognised opcode.".format(opcode, mode, address))
 
-        # print("{0:06b}_{1:02b} {2:08b}\t\t => pc: {3} > {4}\tacc: {5}\t{6}".format(opcode, mode, address, ci, pc, acc, memory))
+        # print("{0:06b}_{1:02b} {2:08b}\t\t => pc: {3} > {4}\tacc: {5}\t{6}".format(opcode, mode, address, ci, pc, acc, memory[stack_base:]))
+        # time.sleep(0.1)
                 
 
 def emulate(source, memsize=None):
     object = assemble(source)
-
+    stack_base = len(object) - 1
     if memsize is None:
-        memsize = len(object) + 32
+        memsize = len(object) + 256
     memory = [np.int16(0)] * memsize
     memory[:len(object)] = object
 
-    execute(memory)
+    execute(memory, stack_base)
 
     return memory

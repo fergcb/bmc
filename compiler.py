@@ -26,7 +26,7 @@ def next_ret():
     return "ret" + str(_ret_n).zfill(3)
 
 
-def translate(token):
+def translate(token, args=None):
     type, value = token.values()
     
     if type == "nop":
@@ -36,9 +36,57 @@ def translate(token):
         return [
             "PUSH #{}".format(value % 255)
         ]
+    
+    elif type == "function":
+        lbl = next_ret()
+        skip = next_ret()
+        block = translate_sequence(value["block"], value["args"])
+        return [
+            f"BRA {skip}",
+            f"{lbl} NOP",
+            *block,
+            "POP",
+            "STA &_a",
+            "POP",
+            "STA &_b",
+            "POP",
+            "STA &_d",
+            *(["POP"] * len(value["args"])),
+            "LDA &_b",
+            "STA &_bp",
+            "PUSH &_a",
+            "BRA &_d",
+            f"{skip} PUSH #{lbl}"
+        ]
+    
+    elif type == "constant":
+        name = value
+        skip = next_ret()
+        return [
+            f"BRA {skip}",
+            f"{name} DAT",
+            f"{skip} POP",
+            f"STA &{name}"
+        ]
+    
+    elif type == "reference":
+        name = value
+        if args is not None and name in args:
+            index = len(args) - args.index(name) + 2
+            return [
+                f"LDA &_bp",
+                f"SUB #{index}",
+                "STA &_d",
+                "LDA ~_d",
+                "PUSHACC"
+            ]
+        else:
+            return [
+                f"PUSH &{name}"
+            ]
 
     if type == "if":
-        block = translate_sequence(value)
+        block = translate_sequence(value, args)
         end = next_ret()
         return [
             "POP",
@@ -48,8 +96,8 @@ def translate(token):
         ]
 
     if type == "if-else":
-        if_block = translate_sequence(value[0])
-        else_block = translate_sequence(value[1])
+        if_block = translate_sequence(value[0], args)
+        else_block = translate_sequence(value[1], args)
         elze = next_ret()
         end = next_ret()
         return [
@@ -107,21 +155,74 @@ def translate(token):
                 f"{ret} LDA &_b",
                 "PUSHACC",
             ]
+        # EQUALS
+        if op == "=":
+            equal = next_ret()
+            end = next_ret()
+            return [
+                "POP",
+                "STA &_a",
+                "POP",
+                "SUB &_a",
+                f"BRZ {equal}",
+                "PUSH #0",
+                f"BRA {end}",
+                f"{equal} PUSH #1",
+                f"{end} NOP"
+            ]
+        # NOT
+        if op == "~":
+            zero = next_ret()
+            end = next_ret()
+            return [
+                "POP",
+                f"BRZ {zero}",
+                "PUSH #0",
+                f"BRA {end}",
+                f"{zero} PUSH #1",
+                f"{end} NOP"
+            ]
         # PRINT
         if op == ".":
             return [
                 "POP",
                 "OUT",
             ]
+        # VOID
+        if op == "void":
+            return [
+                "POP"
+            ]
+        # PEEK
+        if op == "@":
+            return [
+                "POP",
+                "STA &_a",
+                "PEEK &_a",
+                "PUSHACC"
+            ]
+        # CALL
+        if op == "!":
+            ret = next_ret()
+            return [
+                "POP",
+                "STA &_d",
+                f"PUSH #{ret}",
+                f"PUSH &_bp",
+                f"LDA &_sp",
+                "STA &_bp",
+                f"BRA &_d",
+                f"{ret} NOP"
+            ]
     
 
     raise Exception(f"Unknown token type '{type}'.")
 
 
-def translate_sequence(tokens):
+def translate_sequence(tokens, args=None):
     asm = []
     for token in tokens:
-        asm += translate(token)
+        asm += translate(token, args)
     return asm
 
 

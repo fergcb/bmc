@@ -33,7 +33,7 @@ class Optional(Matcher):
 
 
 class Sequence(Matcher):
-    def __init__(self, *matchers, ignore_whitespace=False):
+    def __init__(self, *matchers, ignore_whitespace=True):
         self.matchers = matchers
         self.ignore_whitepace = ignore_whitespace
 
@@ -71,7 +71,7 @@ class Alternate(Matcher):
 
 
 class Repeat(Matcher):
-    def __init__(self, matcher, ignore_whitespace=False):
+    def __init__(self, matcher, ignore_whitespace=True):
         self.matcher = matcher
         self.ignore_whitespace = ignore_whitespace
     
@@ -174,33 +174,64 @@ class Select(Action):
             return values[self.indices[0]]
         return [v for i, v in enumerate(values) if i in self.indices]
 
+class Map(Action):
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def __call__(self, values):
+        return { key: values[index] for key, index in self.kwargs.items() }
+
+def WS():
+    return RegExp("^[ \t\r\n]+")
 
 def Num():
-    return RegExp(r"^(0|([1-9][0-9]{,2}))") >> SimpleAction(int) >> Entoken("num")
+    return RegExp(r"^(0|([1-9][0-9]{,2}))") >> SimpleAction(int)
+
+def NumberLiteral():
+    return Num() >> Entoken("num")
 
 def Literal():
-    return Num()
-
+    return NumberLiteral()
 
 Op =  lambda op: Symbol(op) >> Entoken("op")
 def Operator():
-    return Op("+") | Op("-") | Op("*") | Op("/") | Op("%") | Op(".")
+    return Op("+") | Op("-") | Op("*") | Op("/") | Op("%") | Op("=") | Op(".") | Op("@") | Op("!") | Op("~") | Op("void")
 
+def Name():
+    return RegExp(r"[_a-zA-Z][_a-zA-Z0-9]*")
+
+def Reference():
+    return Name() >> Entoken("reference")
+
+def ArgumentList():
+    return Symbol("(") + Repeat(Name()) + Symbol(")") \
+        >> Select(1)
+
+def FuncStmt():
+    return (Symbol("fn") + ArgumentList() + Block()) \
+        >> Map(args=1, block=2) >> Entoken("function")
+
+def ConstStmt():
+    return Sequence(Symbol("is"), WS(), Name(), ignore_whitespace=False) \
+        >> Select(2) >> Entoken("constant")
 
 def IfStmt():
-    return Sequence(Symbol("?"), Block(), ignore_whitespace=True) >> Select(1) >> Entoken("if")
+    return (Symbol("?") + Block()) \
+        >> Select(1) >> Entoken("if")
 
 def IfElseStmt():
-    return Sequence(Symbol("?"), Block(), Symbol(":"), Block(), ignore_whitespace=True) >> Select(1, 3) >> Entoken("if-else")
+    return (Symbol("?") + Block() + Symbol(":") + Block()) \
+        >> Select(1, 3) >> Entoken("if-else")
 
 def Statement():
-    return Lazy(IfElseStmt) | Lazy(IfStmt)
+    return Lazy(IfElseStmt) | Lazy(IfStmt) | Lazy(FuncStmt) | Lazy(ConstStmt)
 
 def Segment():
-    return Repeat(Statement() | Operator() | Literal(), ignore_whitespace=True)
+    return Repeat(Statement() | Operator() | Literal() | Reference())
 
 def Block():
-    return (Symbol("(") + Segment() + Symbol(")")) >> Select(1)
+    return (Symbol("{") + Segment() + Symbol("}")) \
+        >> Select(1)
 
 parser = Segment()
 

@@ -34,7 +34,36 @@ STA &_d
 LDA ~_d
 PUSHACC
 POP
-BRZ ret004
+BRZ ret003
+PUSH #0
+BRA ret004
+ret003 PUSH #1
+ret004 NOP
+POP
+BRZ ret011
+PUSH #0
+BRA ret012
+ret011 NOP
+LDA &_bp
+SUB #3
+STA &_d
+LDA ~_d
+PUSHACC
+PUSH #1
+POP
+STA &_a
+POP
+SUB &_a
+BRZ ret005
+PUSH #0
+BRA ret006
+ret005 PUSH #1
+ret006 NOP
+POP
+BRZ ret009
+PUSH #1
+BRA ret010
+ret009 NOP
 LDA &_bp
 SUB #3
 STA &_d
@@ -46,25 +75,42 @@ STA &_a
 POP
 SUB &_a
 PUSHACC
-PUSH &count
+PUSH &fib
 POP
 STA &_d
-PUSH #ret003
+PUSH #ret007
 PUSH &_bp
 LDA &_sp
 STA &_bp
 BRA &_d
-ret003 NOP
-POP
-ret004 NOP
+ret007 NOP
 LDA &_bp
 SUB #3
 STA &_d
 LDA ~_d
 PUSHACC
+PUSH #2
 POP
-OUT
-PUSH #0
+STA &_a
+POP
+SUB &_a
+PUSHACC
+PUSH &fib
+POP
+STA &_d
+PUSH #ret008
+PUSH &_bp
+LDA &_sp
+STA &_bp
+BRA &_d
+ret008 NOP
+POP
+STA &_a
+POP
+ADD &_a
+PUSHACC
+ret010 NOP
+ret012 NOP
 POP
 STA &_a
 POP
@@ -77,20 +123,22 @@ STA &_bp
 PUSH &_a
 BRA &_d
 ret002 PUSH #ret001
-BRA ret005
-count DAT
-ret005 POP
-STA &count
-PUSH #4
-PUSH &count
+BRA ret013
+fib DAT
+ret013 POP
+STA &fib
+PUSH #10
+PUSH &fib
 POP
 STA &_d
-PUSH #ret006
+PUSH #ret014
 PUSH &_bp
 LDA &_sp
 STA &_bp
 BRA &_d
-ret006 NOP
+ret014 NOP
+POP
+OUT
 HLT
 -- FUNCTIONS
 
