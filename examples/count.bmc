@@ -4,4 +4,4 @@ fn (n) {
   0
 } is count
 
-4 count!
+10 count!
