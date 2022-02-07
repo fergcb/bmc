@@ -76,10 +76,33 @@ python bmc.py compare -f test.bmc
 |:-----------:|:---- |:----------- |
 | 0...999 | Integer Literal | Push the given integer to the stack. |
 | + | Add | Pop two values and push their sum. |
-| - | Sub | Pop two values and push their difference. |
-| * | Sub | Pop two values and push their product. |
-| % | Sub | Pop two values and push their quotient. |
+| - | Subtract | Pop two values and push their difference. |
+| * | Multiply | Pop two values and push their product. |
+| % | Divide | Pop two values and push their quotient. |
+| = | Equals | Pop two values. Push 1 if they are equal, or 0 if they are not. |
+| ~ | Not | Pop one value. Push 1 if it is 0, or 0 if it is anything else. |
 | . | Output | Pop one value and print it to the screen. |
+| @ | Peek | Pop one value and use it to index the stack. `0` is the top of the stack. | 
+| void | Void | Pop one value and discard it. |
+| ! | Call | Pop one value and call the function at that address. |
+
+## Language Constructs
+### Constants
+A constant is a named value that cannot change after it is defined. The `is` keyword is used to pop a value from the stack and give it a name so that it can be used later in the program. For example, after the code `10 is n` is executed, the token `n` will now push `10` to the stack every time it is executed. For more examples, see the [`"const"` example snippet](https://github.com/fergcb/bmc/blob/main/examples/const.bmc). 
+
+### Control Flow (If/Else)
+The `? {...}` construct represents an "if" statement. A value is popped from the stack. If it is truthy (i.e. non-zero), the code inside the curly braces (`{}`) is executed.
+
+If the popped value is falsy, nothing happens and the next instruction is executed. If we want something to happen, we can use the `? {...} : {...}` construct, or the "if-else" statement. This statement works as previously described, but executes the code in the _second_ set of curly braces only if the popped value is falsy.
+
+### Functions
+Functions can be defined using the `fn () {}` construct. Symbols in the round brackets (`()`) identify the arguments to the function, and the code in the curly braces will be executed when the function is called. Inside the function, the symbols specified in the argument list can be used to push values from lower down to the top of the stack so that they can be used inside the function.
+
+When a function is defined, some memory is allocated for the function body's code to live in, and then the address of that memory slot is pushed to the stack. This means we can use the `is` keyword to store a reference to the function so that we can call it later, e.g. `fn () {} is my_func`.
+
+To call a function, we use the identifier to fetch its address, and then use the `!` operator to jump to that address. Before calling the function, we need to make sure the values at the top of the stack are the arguments to the function. 
+
+For examples of functions in action, see the [`"add"`](https://github.com/fergcb/bmc/blob/main/examples/add.bmc), [`"count"`](https://github.com/fergcb/bmc/blob/main/examples/count.bmc) and [`"fib"`](https://github.com/fergcb/bmc/blob/main/examples/fib.bmc) example snippets.
 
 ## Background
 [Little Man Computer (LMC)](https://en.wikipedia.org/wiki/Little_man_computer) is a model of a simple computer with 100 memory locations and a simple von Neumann architecture. I used LMC while teaching CPU architecture and assembly language to A-level Computer Science students during my PGCE placement.
@@ -94,32 +117,6 @@ LDA &42 // Load the value stored at memory location 42
 LDA ~42 // Load the value from the address stored in memory location 42
 ```
 
-Macros are named sections of code that are not executed, but can be inserted at any point throughout the rest of the code. For example, the BMC standard library includes two macros, "PUSHACC", "PUSH" and "POP", which allow for stack operations to be written more easily. The `$` symbol is used to insert an operand given when the macro is used (e.g. `PUSH #42`) into the substituted code.
+Macros are named sections of code that are not executed, but can be inserted at any point throughout the rest of the code. For example, the BMC standard library includes [several macros](https://github.com/fergcb/bmc/blob/main/stdlib/macros.lmc) which allow stack operations to be written more easily.
 
-- **PUSHACC** - Takes the value from the accumulator, stores it at the stack pointer (`_sp`), and advances the stack pointer.
-```
-macro PUSHACC
-    STA ~_sp
-    LDA &_sp
-    ADD #1
-    STA &_sp
-end
-```
-
-- **PUSH** - Loads a value into the accumulator, then pushes it with `PUSHACC`.
-```
-macro PUSH
-    LDA $
-    PUSHACC
-end
-```
-
-- **POP** - Decrements the stack pointer (`_sp`), then loads the value at the stack pointer into the accumulator.
-```
-macro POP
-    LDA &_sp
-    SUB #1
-    STA &_sp
-    LDA ~_sp
-end
-```
+In addition to these new features, my LMC has an arbitrary number of 32-bit memory cells, rather than the 100 8-bit or 3-digit cells as seen in other implementations. This allows the address portion of an instruction to be 24 bits in length, facilitating the creation of much larger programs.
